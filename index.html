@@ -217,7 +217,18 @@ if(soundEnabled){try{const a=new AudioContext(),o=a.createOscillator();o.connect
 document.querySelector('#binSearch').oninput=renderBins;document.querySelector('#binStatus').onchange=renderBins;document.querySelector('#companyFilter').addEventListener('change',renderBins);renderBins();
 })();
 </script>
+<style>
+.group-workspace{margin-top:20px}.company-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.company-card{border:1px solid var(--line);border-radius:10px;padding:16px;background:#fbfdfd}.company-card h3{display:flex;justify-content:space-between}.company-card .mini{margin:6px 0}.sync-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.sync{padding:13px;border-radius:8px;background:#f3f7f7;border-left:3px solid var(--green)}.sync.warn{border-color:#d29d47}.sync strong{display:block;margin:5px 0}.drill{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:15px;font-size:13px}.drill span{background:#edf5f3;padding:8px 10px;border-radius:6px}.drill b{color:var(--green)}
+</style>
+<section class="card full group-workspace" data-section="group" id="groupWorkspace">
+<div class="sectionbar"><div><h2>Group Workspace · সব প্রতিষ্ঠানের একত্রিত নিয়ন্ত্রণ</h2><p>একটি সিদ্ধান্ত থেকে Group → Company → Department → Job/Bin Card → Transaction পর্যন্ত drill-down।</p></div><span class="tag green">Owner only</span></div>
+<div class="company-cards" id="companyCards"></div>
+<div class="drill"><span>GM Group</span><b>→</b><span>Company</span><b>→</b><span>Department / Branch</span><b>→</b><span>Job / Bin Card</span><b>→</b><span>Transaction & Audit</span></div>
+</section>
+<section class="card full group-workspace" data-section="group"><div class="sectionbar"><div><h2>Data connection health</h2><p>শূন্য value ও data না পাওয়া আলাদা দেখা হবে। শেষ sync এবং mismatch মালিকের নজরে থাকবে।</p></div><button class="btn" onclick="toast('সব সংযোগ refresh request তৈরি হয়েছে')">সব refresh request</button></div><div class="sync-grid"><div class="sync"><span>Biznify</span><strong>Connected · ৬ company</strong><small>Sales, purchase, cash ও bank summary</small></div><div class="sync warn"><span>Inventory</span><strong>Needs API mapping</strong><small>Stock valuation ও movement যাচাই দরকার</small></div><div class="sync warn"><span>Workify HR</span><strong>Payroll sync pending</strong><small>Employee, attendance ও payroll mapping</small></div><div class="sync warn"><span>Trello Bin Card</span><strong>Workflow mapping</strong><small>Card/List/Status এবং ERP ID মিল</small></div></div></section>
+<script>
+(()=>{const root=document.querySelector('#groupWorkspace');document.querySelector('main').appendChild(root);document.querySelectorAll('.group-workspace:not(#groupWorkspace)').forEach(x=>document.querySelector('main').appendChild(x));const n=document.createElement('button');n.dataset.view='group';n.textContent='▣ Group Workspace';document.querySelector('#nav').appendChild(n);n.onclick=()=>setView('group');const box=document.querySelector('#companyCards');if(box)box.innerHTML=companies.map(c=>'<article class="company-card"><h3>'+c.name+' <span class="tag green">Open</span></h3><div class="mini">Sales <b>'+money(c.sales)+'</b></div><div class="mini">Profit <b>'+money(c.profit)+'</b></div><div class="mini">Cash / Bank <b>'+money(c.cash)+'</b></div><div class="mini">Staff <b>'+c.staff+' জন</b></div><button class="btn primary" data-company="'+c.id+'">Company workspace খুলুন</button></article>').join('');document.querySelector('#companyCards')?.addEventListener('click',e=>{const b=e.target.closest('[data-company]');if(b){document.querySelector('#companyFilter').value=b.dataset.company;ownerFilter=b.dataset.company;renderOwnerBoard();setView('companies');toast(companyName(Number(b.dataset.company))+' workspace খোলা হয়েছে')}});})();
+</script>
 </body></html>
-
 
 
