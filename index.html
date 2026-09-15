@@ -280,7 +280,7 @@ Object.assign(bnEn,{'আপনার ব্যবসার নিয়ন্ত্
 function swap(to){document.querySelectorAll('body *').forEach(el=>{if(el.children.length)return;let t=el.textContent;const map=to==='en'?bnEn:enBn;for(const [a,b] of Object.entries(map).sort((x,y)=>y[0].length-x[0].length)){if(t.includes(a))t=t.split(a).join(b)}t=t.replaceAll('Reconsiderয়','Sent for Reconsideration').replaceAll('Reconsideredয়','Sent for Reconsideration');if(to==='bn')t=t.replaceAll('Sent for Reconsideration','পুনর্বিবেচনায় পাঠানো').replaceAll('Reconsiderয়','পুনর্বিবেচনায় পাঠানো');if(t!==el.textContent)el.textContent=t});current=to;localStorage.setItem('gmLang',to);const b=document.getElementById('languageToggle');if(b)b.textContent=to==='en'?'English | বাংলা':'বাংলা | English'}
 window.gmChangeLanguage=()=>swap(current==='bn'?'en':'bn');window.gmChangeTheme=()=>{const d=!document.body.classList.contains('dark-mode');document.body.classList.toggle('dark-mode',d);localStorage.setItem('gmTheme',d?'dark':'light');const b=document.getElementById('themeToggle');if(b)b.textContent=d?'☀ Light':'☾ Dark'};
 const lb=document.getElementById('languageToggle'),tb=document.getElementById('themeToggle');if(lb){lb.onclick=window.gmChangeLanguage;lb.type='button'}if(tb){tb.onclick=window.gmChangeTheme;tb.type='button'}const d=localStorage.getItem('gmTheme')==='dark';document.body.classList.toggle('dark-mode',d);if(tb)tb.textContent=d?'☀ Light':'☾ Dark';
-const observer=new MutationObserver(()=>{if(current==='en')swap('en')});observer.observe(document.body,{subtree:true,childList:true});
+if(current==='en')swap('en');const observer=new MutationObserver(()=>{if(current==='en')swap('en')});observer.observe(document.body,{subtree:true,childList:true});
 })();
 </script>
 <style>
