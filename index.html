@@ -181,8 +181,43 @@ renderOwnerBoard=function(){priorOwnerRender();const rows=scrapData.filter(owner
 ownerNotices[0].company=3;noticeState.find(n=>n.id==='N-101').company=3;
 renderOwnerBoard();
 </script>
+<section class="card full gov-section" data-section="bincard" id="binControl">
+<div class="sectionbar"><div><h2>Bin Card · সেকশন থেকে ডেলিভারি</h2><p>Trello workflow অনুযায়ী নকশা · সব অর্ডার ও সংখ্যা কাল্পনিক · live sync নেই</p></div><span class="tag">সংস্করণ ৩ · Bin Card</span></div>
+<p>Entry → Fabrics Receive → প্রয়োজনীয় production routing → QC → Complete Goods (Store) → Partial / Final Delivery। প্রতিটি সেকশন আলাদা operation; একই SO-কে একাধিকবার বিক্রয় হিসেবে গণনা করা যাবে না।</p>
+<div class="gov-grid"><article><h3>সেকশন পর্যবেক্ষণ</h3><p>Heatpress, Digital Print, Digital Paper Cutting, Roller Heatpress, Screen Print, High Frequency / Silicon / Moulding, DTF, Sequins, Laser, Semi Auto / Vinyl, Cutting, Allover Emboss, Label & Hangtag।</p><p>প্রতি সেকশনে Pending → Running → Complete; সঙ্গে QC hold / Rework। পাঁচটি owner summary line-এর নিচে প্রকৃত সেকশন mapping করতে হবে।</p></article><article><h3>পরিমাণের নিয়ন্ত্রণ</h3><p>একই এককে: received = good + waste + WIP। Good = delivered + ready stock। PC, SET, DZN, ROLL, YARD মেশানো যাবে না; conversion factor অনুমোদিত হতে হবে। একাধিক operation-এর output যোগ করে finished quantity বাড়ানো যাবে না।</p></article><article><h3>মালিকের সিদ্ধান্ত</h3><p>বাড়তি waste, order cancellation, partial delivery exception, order quantity পরিবর্তন, short receipt এবং reopening-এ প্রমাণ ও কারণসহ সিদ্ধান্ত। সাধারণ handover সেকশন ম্যানেজার করবেন। QC না পাস করলে release বন্ধ।</p></article></div>
+<div class="filters" style="margin:18px 0"><label>Bin / SO খুঁজুন <input id="binSearch" placeholder="DEMO-BC-01" class="btn"></label><label>অবস্থা <select id="binStatus" class="btn"><option value="">সব</option><option>Pending</option><option>Running</option><option>QC Hold</option><option>Partial Delivery</option><option>Cancelled</option><option>Review</option><option>Approved</option></select></label></div>
+<div class="tablewrap"><table class="gov-table"><thead><tr><th>Bin / SO / প্রতিষ্ঠান</th><th>সেকশন ও অবস্থা</th><th>Received / Good / Waste / WIP</th><th>Delivered / Stock</th><th>পরিদর্শন</th></tr></thead><tbody id="binRows"></tbody></table></div>
+<details><summary>সফটওয়্যার কোম্পানির field mapping</summary><p>Company ID + SO ID + Bin No + Trello card ID + Operation ID। Order Receive Date, Party ID, Design / artwork version, Order Qty ও unit, Store Receive Fabrics Qty ও unit, Status, Finish Quantity, Wasted Quantity, Heat Process / Impression, Partially Delivered Qty। সঙ্গে assignee, scheduled / actual start-end, deadline, QC evidence, challan ও payment reference।</p><p>List name, custom Status এবং card completion flag আলাদা তথ্য। অমিল হলে conflict queue; একটিকে দেখে delivery complete ধরা যাবে না। একই SO-র split lot, repeat operation ও duplicate card আলাদা যাচাই করতে হবে। Pending Order ও Cancelled আলাদা state।</p></details>
+</section>
+<dialog id="binDialog" style="max-width:760px;width:92%;border:1px solid #ccdadd;border-radius:14px;padding:24px">
+<form method="dialog"><button class="btn" style="float:right">বন্ধ</button></form><h2 id="binTitle"></h2><div id="binDetails"></div>
+<label for="binReason">সিদ্ধান্তের কারণ / evidence reference</label><textarea id="binReason" style="display:block;width:100%;min-height:80px;margin:12px 0"></textarea>
+<div class="filters"><button class="btn primary" data-bin-action="Approved">Approve exception</button><button class="btn" data-bin-action="Review">পুনর্বিবেচনা</button><button class="btn" data-bin-action="Cancelled">Cancel order</button></div><p id="binMessage" role="status"></p><h3>সিদ্ধান্তের ইতিহাস</h3><div id="binHistory"></div></dialog>
+<script>
+(()=>{
+const section=document.querySelector('#binControl');document.querySelector('main').appendChild(section);
+const nav=document.createElement('button');nav.dataset.view='bincard';nav.textContent='▦ Bin Card নিয়ন্ত্রণ';document.querySelector('#nav').appendChild(nav);nav.onclick=()=>setView('bincard');
+const records=[
+{id:'DEMO-BC-01',so:'DEMO-SO-01',company:1,section:'Digital → Roller Heatpress',status:'Running',received:1000,good:600,waste:20,wip:380,delivered:0,qc:false,note:'Roller operation চলমান; QC বাকি'},
+{id:'DEMO-BC-02',so:'DEMO-SO-02',company:3,section:'DTF → Heatpress → QC',status:'QC Hold',received:500,good:450,waste:30,wip:20,delivered:0,qc:false,note:'QC sample mismatch; rework evidence প্রয়োজন'},
+{id:'DEMO-BC-03',so:'DEMO-SO-03',company:4,section:'Laser → Vinyl → Store',status:'Partial Delivery',received:800,good:780,waste:20,wip:0,delivered:500,qc:true,note:'280 PC stock; বাকি delivery schedule নিশ্চিত করুন'},
+{id:'DEMO-BC-04',so:'DEMO-SO-04',company:2,section:'Fabrics Receive → Screen Print',status:'Pending',received:400,good:0,waste:0,wip:400,delivered:0,qc:false,note:'Artwork approval অপেক্ষমাণ'}
+];let audit=[],active=null;
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function renderBins(){const q=document.querySelector('#binSearch').value.toLowerCase(),s=document.querySelector('#binStatus').value,c=document.querySelector('#companyFilter').value;document.querySelector('#binRows').innerHTML=records.filter(r=>(!c||r.company===Number(c))&&(!s||r.status===s)&&(r.id+' '+r.so).toLowerCase().includes(q)).map(r=>'<tr><td>'+r.id+'<br>'+r.so+'<br>'+esc(companyName(r.company))+'</td><td>'+r.section+'<br><span class="tag">'+r.status+'</span></td><td>'+[r.received,r.good,r.waste,r.wip].join(' / ')+' PC</td><td>'+r.delivered+' / '+(r.good-r.delivered)+' PC</td><td><button class="btn" data-bin="'+r.id+'">বিস্তারিত / সিদ্ধান্ত</button></td></tr>').join('')||'<tr><td colspan="5">এই filter-এ নমুনা Bin Card নেই।</td></tr>';}
+function details(){document.querySelector('#binTitle').textContent=active.id+' · '+active.status;document.querySelector('#binDetails').innerHTML='<p>'+esc(active.note)+'</p><p>Quantity balance: '+(active.received===active.good+active.waste+active.wip?'মিলেছে':'অমিল')+' · Waste '+(active.waste/active.received*100).toFixed(1)+'% · QC '+(active.qc?'Passed':'Not passed')+'</p><p>Owner decision সাধারণ production status বা QC result পরিবর্তন করে না।</p>';document.querySelector('#binHistory').innerHTML=audit.filter(a=>a.id===active.id).map(a=>'<p>'+esc(a.time)+' · '+esc(a.before)+' → '+esc(a.after)+'<br>'+esc(a.reason)+'</p>').join('')||'<p>এখনো সিদ্ধান্ত দেওয়া হয়নি।</p>';}
+document.querySelector('#binRows').onclick=e=>{const b=e.target.closest('[data-bin]');if(!b)return;active=records.find(r=>r.id===b.dataset.bin);details();document.querySelector('#binReason').value='';document.querySelector('#binMessage').textContent='';document.querySelector('#binDialog').showModal();};
+document.querySelectorAll('[data-bin-action]').forEach(b=>b.onclick=()=>{const reason=document.querySelector('#binReason').value.trim(),msg=document.querySelector('#binMessage');if(!reason){msg.textContent='কারণ ও evidence reference লিখুন।';return;}if(b.dataset.binAction==='Cancelled'&&active.delivered>0){msg.textContent='আংশিক delivered order সরাসরি cancel করা যাবে না; remaining quantity cancellation ও reversal review প্রয়োজন।';return;}if(active.status==='Cancelled'){msg.textContent='Cancelled order reopening-এর জন্য নতুন request দরকার।';return;}
+const before=active.status,after=b.dataset.binAction;audit.unshift({id:active.id,time:new Date().toLocaleString('bn-BD'),before,after,reason});
+if(after!=='Approved')active.status=after;
+noticeState.unshift({id:'BIN-'+Date.now(),company:active.company,title:active.id+' · '+after,body:before+' → '+after+' · '+reason,time:'এখনই',unread:true,critical:after==='Cancelled'});
+renderOwnerBoard();renderBins();details();msg.textContent='ডেমো সিদ্ধান্ত ও notification যোগ হয়েছে। QC gate অপরিবর্তিত।';
+if(soundEnabled){try{const a=new AudioContext(),o=a.createOscillator();o.connect(a.destination);o.start();o.stop(a.currentTime+.08);}catch(e){}}
+});
+document.querySelector('#binSearch').oninput=renderBins;document.querySelector('#binStatus').onchange=renderBins;document.querySelector('#companyFilter').addEventListener('change',renderBins);renderBins();
+})();
+</script>
 </body></html>
-
 
 
 
